@@ -14,4 +14,10 @@ export class UserService {
     async createUser(data: UserEntityProps){
         return this.userRepository.createUser(data)
     }
+    async authUser(email: string, password: string) {
+        return this.userRepository.authUser(email, password);
+    }
+    async passwordRecover(email: string) {
+        return this.userRepository.passwordRecover(email);
+    }
 }
