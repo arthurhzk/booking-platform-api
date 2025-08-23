@@ -19,7 +19,7 @@ export class UserEntity extends BaseEntity {
     private phone: UserEntityProps['phone'];
     private avatar: UserEntityProps['avatar'];
 
-    private constructor(data: UserEntityProps) {
+    public constructor(data: UserEntityProps) {
         super(data);
       }
 
