@@ -6,4 +6,5 @@ import { AppLogger } from '@src/shared/logger/logger.service';
   providers: [AppLogger],
   exports: [AppLogger],
 })
+
 export class LoggerModule {}
