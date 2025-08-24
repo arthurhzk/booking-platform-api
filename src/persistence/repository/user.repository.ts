@@ -1,26 +1,26 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserEntity, UserEntityProps } from '@src/core/entity/user.entity';
 import { PrismaService } from '@src/persistence/prisma.service';
-import {compare, hash} from 'bcrypt';
+import {compare, hash, hashSync} from 'bcrypt';
 import { RedisService } from '@src/persistence/redis.service';
 import { MailService } from '@src/shared/mailer/email.service';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import { EnvService } from '@src/shared/env/env.service';
 @Injectable()
 export class UserRepository {
-  private readonly model: PrismaService['user'];
+  private readonly model: PrismaService
   private readonly mailService: MailService;
   private readonly saltRounds = 10;
   private readonly redisService: RedisService;
   
   constructor(redisService:RedisService,prismaService: PrismaService, mailService: MailService, private readonly env: EnvService) {
-    this.model = prismaService.user;
+    this.model = prismaService;
     this.redisService = redisService;
     this.mailService = mailService;
   }
 
   async findById(id: string): Promise<UserEntity | null> {
-    const user = await this.model.findUnique({
+    const user = await this.model.user.findUnique({
       where: { id },
     });
     if (!user) return null;
@@ -35,7 +35,7 @@ export class UserRepository {
     if (userCache) {
       return UserEntity.create(JSON.parse(userCache));
     }
-    const user = await this.model.findUnique({
+    const user = await this.model.user.findUnique({
       where: { email },
     });
     if (!user) return null;
@@ -58,9 +58,24 @@ export class UserRepository {
     };
     const { password, ...userWithoutPassword } = payload;
 
-    const createdUser = await this.model.create({
-      data: payload,
-    });
+   
+const createdUser = await this.model.user.create({
+  data: {
+    ...payload,
+    refreshTokens: {
+      create: [
+        {
+          token: jwt.sign({ email: user.getEmail() }, this.env.get("JWT_SECRET"),),
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days,
+        },
+      ],
+    },
+  },
+  include: {
+    refreshTokens: true,
+  },
+});
+
     await this.redisService.set(
       'email:' + user.getEmail(),
       JSON.stringify(userWithoutPassword),
@@ -110,7 +125,7 @@ export class UserRepository {
       throw new BadRequestException('Token inválido');
     }
     const hashedPassword = await hash(newPassword, this.saltRounds);
-    await this.model.update({
+    await this.model.user.update({
       where: { id },
       data: { password: hashedPassword },
     });
