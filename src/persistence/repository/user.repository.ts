@@ -3,16 +3,19 @@ import { UserEntity, UserEntityProps } from '@src/core/entity/user.entity';
 import { PrismaService } from '@src/persistence/prisma.service';
 import {compare, hash} from 'bcrypt';
 import { RedisService } from '@src/persistence/redis.service';
-import { MailService } from '@src/shared/email.service';
+import { MailService } from '@src/shared/mailer/email.service';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import { EnvService } from '@src/shared/env/env.service';
 @Injectable()
 export class UserRepository {
   private readonly model: PrismaService['user'];
   private readonly mailService: MailService;
-  private redisService: RedisService = new RedisService();
   private readonly saltRounds = 10;
+  private readonly redisService: RedisService;
   
-  constructor(prismaService: PrismaService, mailService: MailService) {
+  constructor(redisService:RedisService,prismaService: PrismaService, mailService: MailService, private readonly env: EnvService) {
     this.model = prismaService.user;
+    this.redisService = redisService;
     this.mailService = mailService;
   }
 
@@ -79,11 +82,15 @@ export class UserRepository {
   async passwordRecover(email: string) {
     const user = await this.findByEmail(email);
     if (!user) throw new BadRequestException('Usuário não encontrado');
-    const token = Math.random().toString(36).substring(2, 15);
+    const token = jwt.sign(
+      { id: user.getId()},
+      process.env.JWT_SECRET!,
+      { expiresIn: '1h' },
+    );
     const expiryInSeconds = 3600; 
     const redisKey = `password-recover:${user.getId()}`;
     await this.redisService.setWithExpiry(redisKey, token, expiryInSeconds);
-    const message = `Olá ${user.getFirstName()}, você solicitou a recuperação de senha. Por favor, siga as instruções enviadas para o seu email.`;
+    const message = `Olá ${user.getFirstName()}, você solicitou a recuperação de senha. Por favor, siga as instruções enviadas para o seu email. token: ${token}`;
     try {
       await this.mailService.sendEmail(user.getEmail(), message);
     } catch (error) {
@@ -91,5 +98,22 @@ export class UserRepository {
         'Erro ao enviar email de recuperação de senha',
       );
     }
+  }
+  async resetPassword(id: string, token: string, newPassword: string) {
+    const redisKey = `password-recover:${id}`;
+    const storedToken = await this.redisService.get(redisKey);
+    if (!storedToken || storedToken !== token) {
+      throw new BadRequestException('Token inválido ou expirado');
+    }
+    const decoded = <JwtPayload>jwt.verify(token, this.env.get('JWT_SECRET')); 
+    if (decoded.id !== id) {
+      throw new BadRequestException('Token inválido');
+    }
+    const hashedPassword = await hash(newPassword, this.saltRounds);
+    await this.model.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+    await this.redisService.delete(redisKey);
   }
 }

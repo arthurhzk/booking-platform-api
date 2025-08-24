@@ -2,14 +2,14 @@ import { Injectable } from '@nestjs/common';
 import Redis, { Redis as RedisClient } from 'ioredis';
 import { OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { AppLogger } from '@src/shared/logger/logger.service';
-import {EnvService} from "@src/shared/env/env.service";
+import { EnvService } from '@src/shared/env/env.service';
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private redisClient: RedisClient;
-  private readonly logger = new AppLogger();
 
-  constructor() {
-    this.redisClient = new Redis(process.env.REDIS_URL!);
+
+  constructor(private readonly logger: AppLogger, private readonly env: EnvService) {
+    this.redisClient = new Redis(this.env.get('REDIS_URL'));
 
   }
   onModuleInit() {
@@ -36,7 +36,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async set(key: string, value: string): Promise<void> {
     await this.redisClient.set(key, value);
   }
-  async setWithExpiry(key: string, value: string, expiryInSeconds: number){
+  async setWithExpiry(key: string, value: string, expiryInSeconds: number) {
     await this.redisClient.set(key, value, 'EX', expiryInSeconds);
+  }
+  async delete(key: string): Promise<void> {
+    await this.redisClient.del(key);
   }
 }

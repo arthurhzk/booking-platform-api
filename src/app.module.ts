@@ -4,13 +4,15 @@ import { UserService } from '@src/core/service/user.service';
 import { UserRepository } from '@src/persistence/repository/user.repository';
 import { UserController } from '@src/http/controller/user.controller';
 import { RedisService } from '@src/persistence/redis.service';
-import { MailService } from '@src/shared/email.service';
+import { MailService } from '@src/shared/mailer/email.service';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigModule } from '@nestjs/config';
 import { EnvModule } from '@src/shared/env/env.module';
 import { envSchema } from '@src/shared/env/env';
 import { EnvService } from '@src/shared/env/env.service';
 import {LoggerModule} from '@src/shared/logger/logger.module';
+import { AppLogger } from '@src/shared/logger/logger.service';
+import {EmailModule} from '@src/shared/mailer/email.module';
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import {LoggerModule} from '@src/shared/logger/logger.module';
     }),
     EnvModule,
     LoggerModule,
+    EmailModule,
     MailerModule.forRootAsync({
       imports: [EnvModule],
       inject: [EnvService],
@@ -43,6 +46,8 @@ import {LoggerModule} from '@src/shared/logger/logger.module';
     UserRepository,
     RedisService,
     MailService,
+    EnvService,
+    AppLogger
   ],
 })
 export class AppModule { }

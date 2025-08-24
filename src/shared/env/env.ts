@@ -9,6 +9,7 @@ export const envSchema = z.object({
   EMAIL_PASSWORD: z.string(),
   EMAIL_SECURE: z.coerce.boolean().default(false),
   EMAIL_PORT: z.coerce.number().default(587),
+  JWT_SECRET: z.string(),
 })
 
 export type Env = z.infer<typeof envSchema>

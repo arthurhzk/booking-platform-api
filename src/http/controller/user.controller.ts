@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Put,
   HttpStatus,
   NotFoundException,
   Param,
@@ -49,6 +50,12 @@ export class UserController {
   async passwordRecover(@Req() req: Request, @Res() res: Response){
     const { email } = req.body;
     const user = await this.userService.passwordRecover(email);
+    res.status(HttpStatus.OK).send(user);
+  }
+  @Put('reset-password')
+  async resetPassword(@Req() req: Request, @Res() res: Response){
+    const { id, token, newPassword } = req.body;
+    const user = await this.userService.resetPassword(id, token, newPassword);
     res.status(HttpStatus.OK).send(user);
   }
 }

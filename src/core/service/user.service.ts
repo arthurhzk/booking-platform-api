@@ -20,4 +20,7 @@ export class UserService {
     async passwordRecover(email: string) {
         return this.userRepository.passwordRecover(email);
     }
+    async resetPassword(id: string, token: string, newPassword: string) {
+        return this.userRepository.resetPassword(id, token, newPassword);
+    }
 }
