@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { UserEntity, UserEntityProps } from '@src/core/entity/user.entity';
 import { PrismaService } from '@src/persistence/prisma.service';
-import * as bcrypt from 'bcrypt';
+import {compare, hash} from 'bcrypt';
 import { RedisService } from '@src/persistence/redis.service';
 import { MailService } from '@src/shared/email.service';
 @Injectable()
@@ -47,7 +47,7 @@ export class UserRepository {
 
     const payload = {
       email: user.getEmail(),
-      password: await bcrypt.hash(user.getPassword(), this.saltRounds),
+      password: await hash(user.getPassword(), this.saltRounds),
       firstName: user.getFirstName(),
       lastName: user.getLastName(),
       phone: user.getPhone(),
@@ -71,7 +71,7 @@ export class UserRepository {
   async authUser(email: string, password: string) {
     const user = await this.findByEmail(email);
     if (!user) return null;
-    const isPasswordValid = await bcrypt.compare(password, user.getPassword());
+    const isPasswordValid = await compare(password, user.getPassword());
     if (!isPasswordValid)
       throw new BadRequestException('Email ou senha inválidos');
     return user;
